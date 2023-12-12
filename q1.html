@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        rating-widget h2 {
+            font-size: 1.5em;
+            color: #333;
+        }
+
+        rating-widget span {
+            color: gold;
+            margin-right: 5px;
+        }
+
+        rating-widget div {
+            margin-top: 10px;
+        }
+
+        rating-widget .stars span {
+            color: grey;
+            cursor: pointer;
+            font-size: 24px;
+            margin-right: 5px;
+        }
+
+        rating-widget .stars span:hover {
+            color: gold;
+        }
+
+        rating-widget {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+<rating-widget>
+</rating-widget>
+<form id = 'rating-form' action="https://httpbin.org/post" method="POST">
+    <label for="rating"> How satisfied are you?</label>
+    <input type="hidden" name="question" value="How satisfied are you?">
+    <input type="hidden" name="sentBy" value="HTML">
+    <input type="number" id="rating" name="rating" min="1" max="5" value="O" required>
+    <button type="submit">Submit</button>
+</form>
+<script>
+    class RatingWidget extends HTMLElement {
+        constructor() {
+            super();
+            this.maxStars = 5; // Default value
+            this.ratingSubmitted = false;
+        }
+
+        connectedCallback() {
+            this.createHeader();
+            this.createStars();
+            this.createMessageContainer();
+            this.toggleFormVisibility();
+        }
+
+        toggleFormVisibility() {
+            document.getElementById('rating-form').style.display = 'none';
+            this.style.display = 'block';
+        }
+
+        createStars() {
+            const starContainer = document.createElement('div');
+            starContainer.classList.add('stars');
+            for (let i = 1; i <= this.maxStars; i++) {
+                const star = document.createElement('span');
+                star.innerHTML = '&#9733;'; // Unicode character for a star
+                star.dataset.value = i;
+                star.addEventListener('mouseover', this.hoverStar.bind(this));
+                star.addEventListener('mouseout', this.resetStars.bind(this));
+                star.addEventListener('click', this.clickStar.bind(this));
+                starContainer.appendChild(star);
+            }
+            this.appendChild(starContainer);
+        }
+
+        hoverStar(event) {
+            if (this.ratingSubmitted) return;
+            const hoverValue = event.target.dataset.value;
+            this.highlightStars(hoverValue);
+        }
+
+        resetStars() {
+            if (this.ratingSubmitted) return;
+            this.highlightStars(0);
+        }
+
+        clickStar(event) {
+            this.ratingSubmitted = true;
+            const selectedRating = event.target.dataset.value;
+            this.setRating(selectedRating);
+            this.sendRatingToServer(selectedRating);
+            this.querySelector('.stars').style.display = 'none';
+        }
+
+        sendRatingToServer(rating) {
+            const formData = new FormData();
+            formData.append('question', "How satisfied are you?");
+            formData.append('rating', rating);
+            formData.append('sentBy', 'js');
+
+            fetch('https://httpbin.org/post', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Sent-By': 'JS'
+                }
+            })
+                .then(response => response.json())
+                .then(data => console.log(data)) // Handle the response data
+                .catch(error => console.error('Error:', error));
+        }
+
+        highlightStars(value) {
+            const stars = this.querySelectorAll('.stars span');
+            stars.forEach(star => {
+                star.style.color = star.dataset.value <= value ? 'gold' : 'gray';
+            });
+        }
+
+        createHeader() {
+            const header = document.createElement('h2');
+            header.textContent = 'Rating Widget';
+            this.appendChild(header);
+        }
+
+
+        createMessageContainer() {
+            this.messageContainer = document.createElement('div');
+            this.appendChild(this.messageContainer);
+        }
+
+        setRating(rating) {
+            this.rating = rating;
+            this.updateMessage();
+        }
+
+        updateMessage() {
+            let message = '';
+            const score = (this.rating / this.maxStars) * 100;
+            if (score <= 50) {
+                message = 'Sorry for your bad experience, we will do better next time';
+            } else if (score >= 80) {
+                message = 'Great! Thank you for your high rating!';
+            } else {
+                message = 'Thank you for your feedback!';
+            }
+
+            this.messageContainer.textContent = message;
+        }
+    }
+
+    customElements.define('rating-widget', RatingWidget);
+
+
+</script>
+</body>
+</html>
